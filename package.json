@@ -1,0 +1,50 @@
+{
+  "name": "dynamic-openapi-skill",
+  "version": "0.1.0",
+  "description": "Transform any OpenAPI v3 spec into a Claude Code skill",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "dynamic-openapi-skill": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:run": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "openapi",
+    "skill",
+    "claude",
+    "claude-code",
+    "ai",
+    "llm",
+    "swagger"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@readme/openapi-parser": "^4.1.0",
+    "openapi-types": "^12.1.3",
+    "yaml": "^2.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.2.2",
+    "@vitest/coverage-v8": "^3.2.4",
+    "tsup": "^8.4.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}

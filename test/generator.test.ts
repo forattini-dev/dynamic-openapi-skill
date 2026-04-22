@@ -1,0 +1,90 @@
+import { describe, it, expect } from 'vitest'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { dirname } from 'node:path'
+import { generateSkill } from '../src/generator/skill.js'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const petstore = resolve(__dirname, 'fixtures/petstore.yaml')
+
+describe('generateSkill', () => {
+  it('produces a SKILL.md with frontmatter derived from the spec', async () => {
+    const skill = await generateSkill({ source: petstore })
+    expect(skill.name).toBe('petstore')
+    expect(skill.description).toContain('petstore')
+
+    const skillMd = skill.files.find((f) => f.path === 'SKILL.md')
+    expect(skillMd).toBeDefined()
+    const content = skillMd!.content
+    expect(content.startsWith('---\n')).toBe(true)
+    expect(content).toContain('name: petstore')
+    expect(content).toMatch(/description: /)
+    expect(content).toContain('# Petstore')
+  })
+
+  it('includes servers and the default base URL', async () => {
+    const skill = await generateSkill({ source: petstore })
+    const content = skill.files[0]!.content
+    expect(content).toContain('https://petstore.example.com/v1')
+    expect(content).toContain('Default: `https://petstore.example.com/v1`')
+  })
+
+  it('renders parameters tables and request bodies', async () => {
+    const skill = await generateSkill({ source: petstore })
+    const content = skill.files[0]!.content
+    expect(content).toContain('`listPets`')
+    expect(content).toContain('| Name | In | Required | Type | Description |')
+    expect(content).toContain('`limit`')
+    expect(content).toContain('createPet')
+    expect(content).toContain('application/json')
+  })
+
+  it('includes a curl example by default', async () => {
+    const skill = await generateSkill({ source: petstore })
+    const content = skill.files[0]!.content
+    expect(content).toMatch(/```bash[\s\S]*curl -X GET[\s\S]*```/)
+    expect(content).toContain('https://petstore.example.com/v1/pets')
+  })
+
+  it('omits curl examples when includeExamples is false', async () => {
+    const skill = await generateSkill({ source: petstore, includeExamples: false })
+    const content = skill.files[0]!.content
+    expect(content).not.toContain('curl -X')
+  })
+
+  it('can override name, description, and base URL', async () => {
+    const skill = await generateSkill({
+      source: petstore,
+      name: 'my-custom',
+      description: 'Call our internal pet store.',
+      baseUrl: 'https://example.test',
+    })
+    expect(skill.name).toBe('my-custom')
+    const content = skill.files[0]!.content
+    expect(content).toContain('name: my-custom')
+    expect(content).toContain('Call our internal pet store.')
+    expect(content).toContain('Default: `https://example.test`')
+  })
+
+  it('splits into references/ when operations exceed splitThreshold', async () => {
+    const skill = await generateSkill({ source: petstore, splitThreshold: 1 })
+    const paths = skill.files.map((f) => f.path)
+    expect(paths).toContain('SKILL.md')
+    expect(paths.some((p) => p.startsWith('references/'))).toBe(true)
+
+    const skillMd = skill.files.find((f) => f.path === 'SKILL.md')!.content
+    expect(skillMd).toContain('references/pets.md')
+  })
+
+  it('does not split when operations are below the threshold', async () => {
+    const skill = await generateSkill({ source: petstore, splitThreshold: 1000 })
+    expect(skill.files).toHaveLength(1)
+    expect(skill.files[0]!.path).toBe('SKILL.md')
+  })
+
+  it('renders the authentication section from securitySchemes', async () => {
+    const skill = await generateSkill({ source: petstore })
+    const content = skill.files[0]!.content
+    expect(content).toContain('## Authentication')
+  })
+})
