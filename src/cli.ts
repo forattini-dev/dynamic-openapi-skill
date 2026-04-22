@@ -1,4 +1,5 @@
 import { generateSkill } from './generator/skill.js'
+import type { OperationFilters } from './parser/filter.js'
 import { writeSkill } from './writer.js'
 
 interface CliArgs {
@@ -11,10 +12,19 @@ interface CliArgs {
   splitThreshold?: number
   noExamples?: boolean
   stdout?: boolean
+  includeTags: string[]
+  excludeTags: string[]
+  includeOperations: string[]
+  excludeOperations: string[]
 }
 
 function parseArgs(argv: string[]): CliArgs {
-  const args: CliArgs = {}
+  const args: CliArgs = {
+    includeTags: [],
+    excludeTags: [],
+    includeOperations: [],
+    excludeOperations: [],
+  }
 
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i]
@@ -51,6 +61,18 @@ function parseArgs(argv: string[]): CliArgs {
       }
       args.splitThreshold = parsed
       i++
+    } else if (arg === '--include-tag' && next) {
+      pushCsv(args.includeTags, next)
+      i++
+    } else if (arg === '--exclude-tag' && next) {
+      pushCsv(args.excludeTags, next)
+      i++
+    } else if (arg === '--include-operation' && next) {
+      pushCsv(args.includeOperations, next)
+      i++
+    } else if (arg === '--exclude-operation' && next) {
+      pushCsv(args.excludeOperations, next)
+      i++
     } else if (arg === '--no-examples') {
       args.noExamples = true
     } else if (arg === '--stdout') {
@@ -64,6 +86,28 @@ function parseArgs(argv: string[]): CliArgs {
   }
 
   return args
+}
+
+function pushCsv(target: string[], value: string): void {
+  for (const piece of value.split(',')) {
+    const trimmed = piece.trim()
+    if (trimmed) target.push(trimmed)
+  }
+}
+
+function buildFilters(args: CliArgs): OperationFilters | undefined {
+  const filters: OperationFilters = {}
+  if (args.includeTags.length > 0 || args.excludeTags.length > 0) {
+    filters.tags = {}
+    if (args.includeTags.length > 0) filters.tags.include = args.includeTags
+    if (args.excludeTags.length > 0) filters.tags.exclude = args.excludeTags
+  }
+  if (args.includeOperations.length > 0 || args.excludeOperations.length > 0) {
+    filters.operations = {}
+    if (args.includeOperations.length > 0) filters.operations.include = args.includeOperations
+    if (args.excludeOperations.length > 0) filters.operations.exclude = args.excludeOperations
+  }
+  return filters.tags || filters.operations ? filters : undefined
 }
 
 function printHelp(): void {
@@ -81,6 +125,11 @@ Options:
   -b, --base-url <url>        Override the base URL from the spec
       --server-index <n>      Use the Nth server from the spec (0-based, default: 0)
       --split-threshold <n>   Split into references/<tag>.md when operations exceed N (default: 20)
+      --include-tag <name>    Only include operations with this tag (repeatable, comma-separated)
+      --exclude-tag <name>    Exclude operations with this tag (repeatable, comma-separated)
+      --include-operation <id>  Only include these operationIds (repeatable, comma-separated)
+      --exclude-operation <id>  Exclude these operationIds (repeatable, comma-separated)
+                              (operations flagged with \`x-hidden: true\` in the spec are always hidden)
       --no-examples           Omit curl examples from each operation
       --stdout                Print SKILL.md to stdout instead of writing files
   -h, --help                  Show this help
@@ -123,6 +172,7 @@ async function main(): Promise<void> {
       serverIndex,
       splitThreshold: args.splitThreshold,
       includeExamples: !args.noExamples,
+      filters: buildFilters(args),
     })
 
     if (args.stdout) {

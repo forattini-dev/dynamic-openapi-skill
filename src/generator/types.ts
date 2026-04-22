@@ -1,4 +1,5 @@
 import type { OpenAPIV3 } from 'openapi-types'
+import type { OperationFilters } from '../parser/filter.js'
 import type { ParsedSpec } from '../parser/types.js'
 
 export interface GenerateSkillOptions {
@@ -9,6 +10,8 @@ export interface GenerateSkillOptions {
   serverIndex?: number
   splitThreshold?: number
   includeExamples?: boolean
+  /** Filter which operations land in the generated SKILL.md. `x-hidden: true` on the operation is always honored. */
+  filters?: OperationFilters
 }
 
 export interface SkillFile {

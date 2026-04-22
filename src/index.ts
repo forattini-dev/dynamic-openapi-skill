@@ -1,5 +1,7 @@
 export { generateSkill } from './generator/skill.js'
 export { writeSkill } from './writer.js'
+export { filterOperations } from './parser/filter.js'
+export type { OperationFilter, OperationFilters } from './parser/filter.js'
 export type {
   GenerateSkillOptions,
   GeneratedSkill,

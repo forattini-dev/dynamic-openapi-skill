@@ -45,6 +45,7 @@ Next time the user says *"list available pets on staging"*, Claude loads the ski
 - [Install the generated skill](#install-the-generated-skill)
 - [Sample output](#sample-output)
 - [CLI Reference](#cli-reference)
+- [Filtering operations](#filtering-operations)
 - [Programmatic Usage](#programmatic-usage)
 - [How the mapping works](#how-the-mapping-works)
 - [Splitting large specs](#splitting-large-specs)
@@ -242,16 +243,20 @@ properties:
 dynamic-openapi-skill [options] [source]
 
 Options:
-  -s, --source <url|file>     OpenAPI spec URL or file path
-  -o, --out <dir>             Output directory for the generated skill
-      --name <name>           Skill name (default: slug of spec title)
-      --description <text>    Frontmatter description
-  -b, --base-url <url>        Override the base URL from the spec
-      --server-index <n>      Use the Nth server entry (default: 0)
-      --split-threshold <n>   Split into references/<tag>.md when ops > N (default: 20)
-      --no-examples           Omit curl snippets
-      --stdout                Print SKILL.md to stdout instead of writing files
-  -h, --help                  Show help
+  -s, --source <url|file>       OpenAPI spec URL or file path
+  -o, --out <dir>               Output directory for the generated skill
+      --name <name>             Skill name (default: slug of spec title)
+      --description <text>      Frontmatter description
+  -b, --base-url <url>          Override the base URL from the spec
+      --server-index <n>        Use the Nth server entry (default: 0)
+      --split-threshold <n>     Split into references/<tag>.md when ops > N (default: 20)
+      --include-tag <name>      Only include operations with this tag (repeatable, comma-separated)
+      --exclude-tag <name>      Exclude operations with this tag (repeatable, comma-separated)
+      --include-operation <id>  Only include these operationIds (repeatable, comma-separated)
+      --exclude-operation <id>  Exclude these operationIds (repeatable, comma-separated)
+      --no-examples             Omit curl snippets
+      --stdout                  Print SKILL.md to stdout instead of writing files
+  -h, --help                    Show help
 ```
 
 | Environment variable   | Purpose                                    |
@@ -275,7 +280,66 @@ npx dynamic-openapi-skill -s ./stripe.json -o ./stripe-skill --split-threshold 1
 
 # strip curl examples (smaller skill, Claude figures out the requests)
 npx dynamic-openapi-skill -s ./spec.yaml -o ./lean-skill --no-examples
+
+# read-only skill: only the `pets` tag makes it to SKILL.md
+npx dynamic-openapi-skill -s ./spec.yaml -o ./pets-skill --include-tag pets
+
+# hide admin endpoints and a noisy op
+npx dynamic-openapi-skill -s ./spec.yaml -o ./user-skill \
+  --exclude-tag admin --exclude-operation debugDump
 ```
+
+---
+
+## Filtering operations
+
+Not every endpoint should land in the generated `SKILL.md`. Two ways to slice:
+
+### Flags (and programmatic `filters`)
+
+Flags accept repeated values or comma-separated lists:
+
+```bash
+# allowlist by tag
+dynamic-openapi-skill -s ./spec.yaml -o ./skill --include-tag pets --include-tag store
+
+# denylist by tag
+dynamic-openapi-skill -s ./spec.yaml -o ./skill --exclude-tag admin
+
+# allowlist by operationId
+dynamic-openapi-skill -s ./spec.yaml -o ./skill --include-operation listPets,getPetById
+
+# allowlist a whole tag, minus one op
+dynamic-openapi-skill -s ./spec.yaml -o ./skill --include-tag pets --exclude-operation deletePet
+```
+
+Programmatic equivalent:
+
+```typescript
+const skill = await generateSkill({
+  source: './spec.yaml',
+  filters: {
+    tags: { include: ['pets'], exclude: ['admin'] },
+    operations: { include: ['healthCheck'], exclude: ['debugDump'] },
+  },
+})
+```
+
+**Precedence** (first match wins): `x-hidden` → `operations.exclude` → `operations.include` → `tags.exclude` → includes as allowlist. `operations.include` escapes a matching `tags.exclude`, but `operations.exclude` wins over everything except `x-hidden`.
+
+### `x-hidden` vendor extension
+
+Hide an endpoint at the spec level — applies to every consumer in the family (skill, CLI, MCP):
+
+```yaml
+paths:
+  /admin/reset:
+    post:
+      operationId: adminReset
+      x-hidden: true        # always removed, regardless of filter flags
+```
+
+Good for endpoints that ship in the spec for completeness but shouldn't be surfaced to AI agents, CLI users, or skill consumers.
 
 ---
 

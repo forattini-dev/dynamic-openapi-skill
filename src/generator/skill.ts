@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import type { OpenAPIV3 } from 'openapi-types'
 import { loadSpecWithSource } from '../parser/loader.js'
 import { resolveSpec } from '../parser/resolver.js'
+import { filterOperations } from '../parser/filter.js'
 import type { ParsedOperation, ParsedSpec } from '../parser/types.js'
 import { renderOperation } from './operation.js'
 import { firstLine, slugify, toTitleCase } from './naming.js'
@@ -13,6 +14,7 @@ const DEFAULT_SPLIT_THRESHOLD = 20
 export async function generateSkill(options: GenerateSkillOptions): Promise<GeneratedSkill> {
   const loaded = await loadSpecWithSource(options.source)
   const spec = await resolveSpec(loaded.doc)
+  spec.operations = filterOperations(spec.operations, options.filters)
 
   const name = options.name ?? (slugify(spec.title) || 'openapi-skill')
   const description = options.description ?? buildDefaultDescription(spec)
