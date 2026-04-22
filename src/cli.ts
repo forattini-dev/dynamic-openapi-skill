@@ -1,8 +1,9 @@
+import { pathToFileURL } from 'node:url'
 import { generateSkill } from './generator/skill.js'
 import type { OperationFilters } from './parser/filter.js'
 import { writeSkill } from './writer.js'
 
-interface CliArgs {
+export interface CliArgs {
   source?: string
   out?: string
   name?: string
@@ -18,7 +19,7 @@ interface CliArgs {
   excludeOperations: string[]
 }
 
-function parseArgs(argv: string[]): CliArgs {
+export function parseArgs(argv: string[]): CliArgs {
   const args: CliArgs = {
     includeTags: [],
     excludeTags: [],
@@ -95,7 +96,7 @@ function pushCsv(target: string[], value: string): void {
   }
 }
 
-function buildFilters(args: CliArgs): OperationFilters | undefined {
+export function buildFilters(args: CliArgs): OperationFilters | undefined {
   const filters: OperationFilters = {}
   if (args.includeTags.length > 0 || args.excludeTags.length > 0) {
     filters.tags = {}
@@ -146,8 +147,8 @@ Examples:
 `)
 }
 
-async function main(): Promise<void> {
-  const args = parseArgs(process.argv)
+export async function main(argv: string[] = process.argv): Promise<void> {
+  const args = parseArgs(argv)
   const source = args.source ?? process.env['OPENAPI_SOURCE']
 
   if (!source) {
@@ -206,4 +207,12 @@ async function main(): Promise<void> {
   }
 }
 
-main()
+const invokedDirectly =
+  typeof process !== 'undefined' &&
+  Array.isArray(process.argv) &&
+  process.argv[1] !== undefined &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+
+if (invokedDirectly) {
+  main()
+}
