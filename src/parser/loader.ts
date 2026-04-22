@@ -19,7 +19,17 @@ export function resolveSource(source: string | OpenAPIV3.Document) {
   return { type: 'file' as const, value: source }
 }
 
+export interface LoadedSpec {
+  doc: OpenAPIV3.Document
+  text: string
+  sourceLabel: string
+}
+
 export async function loadSpec(source: string | OpenAPIV3.Document): Promise<OpenAPIV3.Document> {
+  return (await loadSpecWithSource(source)).doc
+}
+
+export async function loadSpecWithSource(source: string | OpenAPIV3.Document): Promise<LoadedSpec> {
   const resolved = resolveSource(source)
 
   switch (resolved.type) {
@@ -29,7 +39,7 @@ export async function loadSpec(source: string | OpenAPIV3.Document): Promise<Ope
         throw new Error(`Failed to fetch spec from ${resolved.value}: ${res.status} ${res.statusText}`)
       }
       const text = await res.text()
-      return parseSpecText(text, resolved.value)
+      return { doc: parseSpecText(text, resolved.value), text, sourceLabel: resolved.value }
     }
 
     case 'file': {
@@ -40,14 +50,15 @@ export async function loadSpec(source: string | OpenAPIV3.Document): Promise<Ope
         const msg = err instanceof Error ? err.message : String(err)
         throw new Error(`Failed to read spec file "${resolved.value}": ${msg}`)
       }
-      return parseSpecText(text, resolved.value)
+      return { doc: parseSpecText(text, resolved.value), text, sourceLabel: resolved.value }
     }
 
     case 'inline': {
       if (typeof resolved.value === 'string') {
-        return parseSpecText(resolved.value, '(inline)')
+        return { doc: parseSpecText(resolved.value, '(inline)'), text: resolved.value, sourceLabel: '(inline)' }
       }
-      return resolved.value
+      const text = JSON.stringify(resolved.value)
+      return { doc: resolved.value, text, sourceLabel: '(inline)' }
     }
   }
 }

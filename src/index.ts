@@ -1,6 +1,11 @@
 export { generateSkill } from './generator/skill.js'
 export { writeSkill } from './writer.js'
-export type { GenerateSkillOptions, GeneratedSkill, SkillFile } from './generator/types.js'
+export type {
+  GenerateSkillOptions,
+  GeneratedSkill,
+  SkillFile,
+  SpecMetadata,
+} from './generator/types.js'
 export type {
   ParsedSpec,
   ParsedOperation,

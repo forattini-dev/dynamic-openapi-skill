@@ -16,9 +16,17 @@ export interface SkillFile {
   content: string
 }
 
+export interface SpecMetadata {
+  apiVersion: string
+  source: string
+  md5: string
+  generatorVersion: string
+}
+
 export interface GeneratedSkill {
   name: string
   description: string
   spec: ParsedSpec
   files: SkillFile[]
+  metadata: SpecMetadata
 }

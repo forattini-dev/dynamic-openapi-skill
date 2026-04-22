@@ -1,4 +1,11 @@
+import { readFileSync } from 'node:fs'
 import { defineConfig } from 'tsup'
+
+const pkg = JSON.parse(readFileSync('./package.json', 'utf-8')) as { version: string }
+
+const defineInjections = {
+  __PKG_VERSION__: JSON.stringify(pkg.version),
+}
 
 export default defineConfig([
   {
@@ -8,6 +15,7 @@ export default defineConfig([
     clean: true,
     sourcemap: true,
     target: 'node20',
+    define: defineInjections,
   },
   {
     entry: { cli: 'src/cli.ts' },
@@ -15,6 +23,7 @@ export default defineConfig([
     dts: false,
     sourcemap: true,
     target: 'node20',
+    define: defineInjections,
     banner: {
       js: '#!/usr/bin/env node',
     },
