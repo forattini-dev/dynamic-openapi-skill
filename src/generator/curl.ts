@@ -1,4 +1,4 @@
-import type { OpenAPIV3 } from 'openapi-types'
+import type { OpenAPIV3 } from 'dynamic-openapi-tools/parser'
 import type { ParsedOperation } from 'dynamic-openapi-tools/parser'
 import { exampleFromSchema } from './schema.js'
 

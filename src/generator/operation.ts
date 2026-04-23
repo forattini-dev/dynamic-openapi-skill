@@ -1,4 +1,4 @@
-import type { OpenAPIV3 } from 'openapi-types'
+import type { OpenAPIV3 } from 'dynamic-openapi-tools/parser'
 import type { ParsedOperation, ParsedResponse } from 'dynamic-openapi-tools/parser'
 import { describeSchema, renderSchemaBlock } from './schema.js'
 import { buildCurlExample } from './curl.js'

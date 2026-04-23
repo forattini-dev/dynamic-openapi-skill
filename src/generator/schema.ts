@@ -1,4 +1,4 @@
-import type { OpenAPIV3 } from 'openapi-types'
+import type { OpenAPIV3 } from 'dynamic-openapi-tools/parser'
 
 type Schema = OpenAPIV3.SchemaObject
 

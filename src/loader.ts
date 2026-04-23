@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { parse as parseYaml } from 'yaml'
-import type { OpenAPIV3 } from 'openapi-types'
+import type { OpenAPIV3 } from 'dynamic-openapi-tools/parser'
 import { resolveSource } from 'dynamic-openapi-tools/parser'
 import { fetchWithRetry } from 'dynamic-openapi-tools/utils'
 

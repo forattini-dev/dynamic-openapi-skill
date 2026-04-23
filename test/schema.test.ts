@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { OpenAPIV3 } from 'openapi-types'
+import type { OpenAPIV3 } from 'dynamic-openapi-tools/parser'
 import { describeSchema, renderSchemaBlock, exampleFromSchema } from '../src/generator/schema.js'
 
 type Schema = OpenAPIV3.SchemaObject

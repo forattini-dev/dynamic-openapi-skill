@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import type { OpenAPIV3 } from 'openapi-types'
+import type { OpenAPIV3 } from 'dynamic-openapi-tools/parser'
 import { resolveSpec, filterOperations } from 'dynamic-openapi-tools/parser'
 import type { ParsedOperation, ParsedSpec } from 'dynamic-openapi-tools/parser'
 import { loadSpecWithSource } from '../loader.js'
