@@ -6,6 +6,7 @@ import { filterOperations } from '../parser/filter.js'
 import type { ParsedOperation, ParsedSpec } from '../parser/types.js'
 import { renderOperation } from './operation.js'
 import { firstLine, slugify, toTitleCase } from './naming.js'
+import { buildDescription, extractIntent, type Intent } from './intent.js'
 import type { GeneratedSkill, GenerateSkillOptions, SkillFile, SpecMetadata } from './types.js'
 import { GENERATOR_VERSION } from '../version.js'
 
@@ -16,8 +17,14 @@ export async function generateSkill(options: GenerateSkillOptions): Promise<Gene
   const spec = await resolveSpec(loaded.doc)
   spec.operations = filterOperations(spec.operations, options.filters)
 
+  const intent = extractIntent(spec)
+
   const name = options.name ?? (slugify(spec.title) || 'openapi-skill')
-  const description = options.description ?? buildDefaultDescription(spec)
+  const description = options.description ?? buildDescription({
+    title: spec.title,
+    specDescription: spec.description,
+    intent,
+  })
   const baseUrl = resolveBaseUrl(spec, options.baseUrl, options.serverIndex)
   const splitThreshold = options.splitThreshold ?? DEFAULT_SPLIT_THRESHOLD
   const includeExamples = options.includeExamples ?? true
@@ -35,7 +42,7 @@ export async function generateSkill(options: GenerateSkillOptions): Promise<Gene
   const files: SkillFile[] = []
   files.push({
     path: 'SKILL.md',
-    content: renderSkillMd({ name, description, spec, baseUrl, grouped, split, includeExamples, metadata }),
+    content: renderSkillMd({ name, description, spec, baseUrl, grouped, split, includeExamples, metadata, intent }),
   })
 
   if (split) {
@@ -53,16 +60,6 @@ export async function generateSkill(options: GenerateSkillOptions): Promise<Gene
   }
 
   return { name, description, spec, files, metadata }
-}
-
-function buildDefaultDescription(spec: ParsedSpec): string {
-  const base = spec.description ? firstLine(spec.description) : ''
-  let core = base || `Call the ${spec.title} API.`
-  if (!/[.!?…]$/.test(core)) core += '.'
-  const suffix = ` Use when the user wants to interact with ${spec.title}.`
-  const limit = 1024
-  const combined = `${core}${suffix}`
-  return combined.length > limit ? combined.slice(0, limit - 1) + '…' : combined
 }
 
 function resolveBaseUrl(spec: ParsedSpec, override: string | undefined, serverIndex = 0): string {
@@ -97,6 +94,7 @@ interface RenderSkillContext {
   split: boolean
   includeExamples: boolean
   metadata: SpecMetadata
+  intent: Intent
 }
 
 function renderSkillMd(ctx: RenderSkillContext): string {
@@ -104,6 +102,7 @@ function renderSkillMd(ctx: RenderSkillContext): string {
   lines.push('---')
   lines.push(`name: ${ctx.name}`)
   lines.push(`description: ${yamlString(ctx.description)}`)
+  lines.push(`allowed-tools: Bash(curl *) WebFetch Read Write`)
   lines.push('---')
   lines.push('')
   lines.push(`# ${ctx.spec.title}`)
@@ -113,12 +112,6 @@ function renderSkillMd(ctx: RenderSkillContext): string {
     lines.push(ctx.spec.description.trim())
     lines.push('')
   }
-
-  lines.push('## When to use')
-  lines.push('')
-  lines.push(`Load this skill when the user needs to call **${ctx.spec.title}** (v${ctx.spec.version}).`)
-  lines.push('Each operation below maps to a single HTTP request — build the URL from the base URL plus the operation path, substituting path parameters, then send the request with the HTTP client of your choice (`curl`, `fetch`, `httpx`, etc).')
-  lines.push('')
 
   lines.push('## Base URL')
   lines.push('')

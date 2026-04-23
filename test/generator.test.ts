@@ -11,7 +11,7 @@ describe('generateSkill', () => {
   it('produces a SKILL.md with frontmatter derived from the spec', async () => {
     const skill = await generateSkill({ source: petstore })
     expect(skill.name).toBe('petstore')
-    expect(skill.description).toContain('petstore')
+    expect(skill.description.toLowerCase()).toContain('petstore')
 
     const skillMd = skill.files.find((f) => f.path === 'SKILL.md')
     expect(skillMd).toBeDefined()
