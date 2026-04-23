@@ -38,18 +38,21 @@ export async function generateSkill(options: GenerateSkillOptions): Promise<Gene
 
   const grouped = groupByTag(spec.operations)
   const split = spec.operations.length > splitThreshold
+  const tagSlugs = resolveTagSlugs(grouped)
 
   const files: SkillFile[] = []
   files.push({
     path: 'SKILL.md',
-    content: renderSkillMd({ name, description, spec, baseUrl, grouped, split, includeExamples, metadata, intent }),
+    content: renderSkillMd({ name, description, spec, baseUrl, grouped, split, includeExamples, metadata, intent, tagSlugs }),
   })
 
   if (split) {
     for (const [tag, ops] of grouped) {
+      const slug = tagSlugs.get(tag)!
       files.push({
-        path: `references/${slugify(tag)}.md`,
+        path: `references/${slug}.md`,
         content: renderReferenceFile(tag, ops, intent, {
+          skillName: name,
           baseUrl,
           securitySchemes: spec.securitySchemes,
           includeExamples,
@@ -85,6 +88,20 @@ function groupByTag(operations: ParsedOperation[]): Map<string, ParsedOperation[
   return map
 }
 
+function resolveTagSlugs(grouped: Map<string, ParsedOperation[]>): Map<string, string> {
+  const out = new Map<string, string>()
+  const used = new Set<string>()
+  for (const tag of grouped.keys()) {
+    const base = slugify(tag) || 'tag'
+    let slug = base
+    let n = 2
+    while (used.has(slug)) slug = `${base}-${n++}`
+    used.add(slug)
+    out.set(tag, slug)
+  }
+  return out
+}
+
 interface RenderSkillContext {
   name: string
   description: string
@@ -95,6 +112,7 @@ interface RenderSkillContext {
   includeExamples: boolean
   metadata: SpecMetadata
   intent: Intent
+  tagSlugs: Map<string, string>
 }
 
 function renderSkillMd(ctx: RenderSkillContext): string {
@@ -140,7 +158,8 @@ function renderSkillMd(ctx: RenderSkillContext): string {
   lines.push('')
 
   for (const [tag, ops] of ctx.grouped) {
-    lines.push(renderTagHeader(tag, ops, ctx.split))
+    const slug = ctx.tagSlugs.get(tag)!
+    lines.push(renderTagHeader(tag, ops, ctx.split, slug))
     lines.push('')
     lines.push(renderTagSummary(ops, ctx.intent))
     const flow = suggestFlow(ops, ctx.intent)
@@ -194,10 +213,10 @@ function renderOperationsLead(spec: ParsedSpec, split: boolean): string {
   return parts.map((p) => `> ${p}`).join('\n')
 }
 
-function renderTagHeader(tag: string, ops: ParsedOperation[], split: boolean): string {
+function renderTagHeader(tag: string, ops: ParsedOperation[], split: boolean, slug: string): string {
   const title = `### ${toTitleCase(tag)} (${ops.length})`
   if (!split) return title
-  const ref = `references/${slugify(tag)}.md`
+  const ref = `references/${slug}.md`
   return `${title} — [\`${ref}\`](${ref})`
 }
 
@@ -290,10 +309,12 @@ function renderReferenceFile(
   tag: string,
   operations: ParsedOperation[],
   intent: Intent,
-  opts: { baseUrl: string; securitySchemes: Record<string, OpenAPIV3.SecuritySchemeObject>; includeExamples: boolean; headingLevel: number }
+  opts: { skillName: string; baseUrl: string; securitySchemes: Record<string, OpenAPIV3.SecuritySchemeObject>; includeExamples: boolean; headingLevel: number }
 ): string {
   const lines: string[] = []
   lines.push(`# ${toTitleCase(tag)}`)
+  lines.push('')
+  lines.push(`_Part of the \`${opts.skillName}\` skill — see [\`../SKILL.md\`](../SKILL.md) for auth, base URL, and other tags._`)
   lines.push('')
   lines.push(renderTagSummary(operations, intent))
   const flow = suggestFlow(operations, intent)

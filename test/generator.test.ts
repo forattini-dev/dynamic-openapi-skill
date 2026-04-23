@@ -76,6 +76,29 @@ describe('generateSkill', () => {
     expect(skillMd).toContain('references/pets.md')
   })
 
+  it('emits a breadcrumb back to SKILL.md in each reference file', async () => {
+    const skill = await generateSkill({ source: petstore, splitThreshold: 1 })
+    const ref = skill.files.find((f) => f.path.startsWith('references/'))!
+    expect(ref.content).toContain('Part of the `petstore` skill')
+    expect(ref.content).toContain('../SKILL.md')
+  })
+
+  it('deduplicates tag slugs that would collide', async () => {
+    const doc = {
+      openapi: '3.0.0',
+      info: { title: 'Dup', version: '1.0.0' },
+      paths: {
+        '/a': { get: { tags: ['Pet Store'], operationId: 'a', responses: { '200': { description: 'ok' } } } },
+        '/b': { get: { tags: ['pet-store'], operationId: 'b', responses: { '200': { description: 'ok' } } } },
+      },
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const skill = await generateSkill({ source: doc as any, splitThreshold: 1 })
+    const refs = skill.files.filter((f) => f.path.startsWith('references/')).map((f) => f.path)
+    expect(new Set(refs).size).toBe(refs.length)
+    expect(refs.length).toBe(2)
+  })
+
   it('does not split when operations are below the threshold', async () => {
     const skill = await generateSkill({ source: petstore, splitThreshold: 1000 })
     expect(skill.files).toHaveLength(1)
