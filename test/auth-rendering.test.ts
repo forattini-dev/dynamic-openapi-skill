@@ -73,6 +73,6 @@ describe('auth + yamlString edge cases', () => {
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const skill = await generateSkill({ source: doc as any })
-    expect(skill.files[0]!.content).toContain('_No servers declared in the spec.')
+    expect(skill.files[0]!.content).toContain('_No servers declared.')
   })
 })
