@@ -6,6 +6,7 @@ import { loadSpecWithSource } from '../loader.js'
 import { renderOperation } from './operation.js'
 import { firstLine, slugify, toTitleCase } from './naming.js'
 import { buildDescription, extractIntent, type Intent } from './intent.js'
+import { detectPatterns, renderErrorHint, renderPaginationHint } from './patterns.js'
 import type { GeneratedSkill, GenerateSkillOptions, SkillFile, SpecMetadata } from './types.js'
 import { GENERATOR_VERSION } from '../version.js'
 
@@ -181,6 +182,9 @@ function renderOperationsLead(spec: ParsedSpec, split: boolean): string {
   if (spec.operations.some(hasBinaryResponse)) {
     parts.push('Binary responses: pass `-o <file>` to `curl` so bytes stream to disk, not context.')
   }
+  const patterns = detectPatterns(spec)
+  if (patterns.pagination) parts.push(renderPaginationHint(patterns.pagination))
+  if (patterns.error) parts.push(renderErrorHint(patterns.error))
   if (spec.externalDocs) {
     parts.push('Use `WebFetch` only for the URL under [References](#references).')
   }
