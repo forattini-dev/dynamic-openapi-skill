@@ -1,5 +1,5 @@
 import type { OpenAPIV3 } from 'openapi-types'
-import type { ParsedOperation, ParsedResponse } from '../parser/types.js'
+import type { ParsedOperation, ParsedResponse } from 'dynamic-openapi-tools/parser'
 import { describeSchema, renderSchemaBlock } from './schema.js'
 import { buildCurlExample } from './curl.js'
 import { escapeMarkdown, firstLine } from './naming.js'

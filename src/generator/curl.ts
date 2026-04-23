@@ -1,5 +1,5 @@
 import type { OpenAPIV3 } from 'openapi-types'
-import type { ParsedOperation } from '../parser/types.js'
+import type { ParsedOperation } from 'dynamic-openapi-tools/parser'
 import { exampleFromSchema } from './schema.js'
 
 export interface CurlOptions {

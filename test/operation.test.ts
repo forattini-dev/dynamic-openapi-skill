@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { renderOperation } from '../src/generator/operation.js'
 import { buildCurlExample } from '../src/generator/curl.js'
-import type { ParsedOperation } from '../src/parser/types.js'
+import type { ParsedOperation } from 'dynamic-openapi-tools/parser'
 
 function baseOp(overrides: Partial<ParsedOperation> = {}): ParsedOperation {
   return {

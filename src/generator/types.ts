@@ -1,6 +1,5 @@
 import type { OpenAPIV3 } from 'openapi-types'
-import type { OperationFilters } from '../parser/filter.js'
-import type { ParsedSpec } from '../parser/types.js'
+import type { OperationFilters, ParsedSpec } from 'dynamic-openapi-tools/parser'
 
 export interface GenerateSkillOptions {
   source: string | OpenAPIV3.Document

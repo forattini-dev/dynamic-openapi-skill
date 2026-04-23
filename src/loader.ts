@@ -1,42 +1,38 @@
 import { readFile } from 'node:fs/promises'
 import { parse as parseYaml } from 'yaml'
 import type { OpenAPIV3 } from 'openapi-types'
-import { fetchWithRetry } from '../utils/fetch.js'
+import { resolveSource } from 'dynamic-openapi-tools/parser'
+import { fetchWithRetry } from 'dynamic-openapi-tools/utils'
 
-export function resolveSource(source: string | OpenAPIV3.Document) {
-  if (typeof source !== 'string') {
-    return { type: 'inline' as const, value: source }
-  }
-
-  if (source.startsWith('http://') || source.startsWith('https://')) {
-    return { type: 'url' as const, value: source }
-  }
-
-  if (source.trim().startsWith('{') || source.trim().startsWith('openapi')) {
-    return { type: 'inline' as const, value: source }
-  }
-
-  return { type: 'file' as const, value: source }
-}
-
+/**
+ * Result of loading a spec while preserving the original text and source label,
+ * both required to emit the `Source:` and `Spec MD5:` lines in SKILL.md metadata.
+ */
 export interface LoadedSpec {
   doc: OpenAPIV3.Document
   text: string
   sourceLabel: string
 }
 
-export async function loadSpec(source: string | OpenAPIV3.Document): Promise<OpenAPIV3.Document> {
-  return (await loadSpecWithSource(source)).doc
-}
-
-export async function loadSpecWithSource(source: string | OpenAPIV3.Document): Promise<LoadedSpec> {
+/**
+ * Loads a spec and also returns the raw text + source label used by the skill
+ * generator to compute a stable MD5 hash and print the original input path.
+ *
+ * Delegates source-type discrimination to `dynamic-openapi-tools` but parses the
+ * text locally so the raw bytes can flow into the metadata section unchanged.
+ */
+export async function loadSpecWithSource(
+  source: string | OpenAPIV3.Document
+): Promise<LoadedSpec> {
   const resolved = resolveSource(source)
 
   switch (resolved.type) {
     case 'url': {
       const res = await fetchWithRetry(resolved.value)
       if (!res.ok) {
-        throw new Error(`Failed to fetch spec from ${resolved.value}: ${res.status} ${res.statusText}`)
+        throw new Error(
+          `Failed to fetch spec from ${resolved.value}: ${res.status} ${res.statusText}`
+        )
       }
       const text = await res.text()
       return { doc: parseSpecText(text, resolved.value), text, sourceLabel: resolved.value }
@@ -55,10 +51,17 @@ export async function loadSpecWithSource(source: string | OpenAPIV3.Document): P
 
     case 'inline': {
       if (typeof resolved.value === 'string') {
-        return { doc: parseSpecText(resolved.value, '(inline)'), text: resolved.value, sourceLabel: '(inline)' }
+        return {
+          doc: parseSpecText(resolved.value, '(inline)'),
+          text: resolved.value,
+          sourceLabel: '(inline)',
+        }
       }
-      const text = JSON.stringify(resolved.value)
-      return { doc: resolved.value, text, sourceLabel: '(inline)' }
+      return {
+        doc: resolved.value,
+        text: JSON.stringify(resolved.value),
+        sourceLabel: '(inline)',
+      }
     }
   }
 }

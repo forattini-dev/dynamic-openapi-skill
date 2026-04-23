@@ -1,4 +1,4 @@
-import type { ParsedOperation, ParsedSpec } from '../parser/types.js'
+import type { ParsedOperation, ParsedSpec } from 'dynamic-openapi-tools/parser'
 
 export interface Intent {
   verbs: string[]

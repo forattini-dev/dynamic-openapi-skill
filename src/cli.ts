@@ -1,6 +1,6 @@
 import { pathToFileURL } from 'node:url'
+import type { OperationFilters } from 'dynamic-openapi-tools/parser'
 import { generateSkill } from './generator/skill.js'
-import type { OperationFilters } from './parser/filter.js'
 import { writeSkill } from './writer.js'
 
 export interface CliArgs {

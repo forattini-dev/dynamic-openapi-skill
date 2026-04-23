@@ -1,7 +1,7 @@
 export { generateSkill } from './generator/skill.js'
 export { writeSkill } from './writer.js'
-export { filterOperations } from './parser/filter.js'
-export type { OperationFilter, OperationFilters } from './parser/filter.js'
+export { filterOperations } from 'dynamic-openapi-tools/parser'
+export type { OperationFilter, OperationFilters } from 'dynamic-openapi-tools/parser'
 export type {
   GenerateSkillOptions,
   GeneratedSkill,
@@ -15,4 +15,4 @@ export type {
   ParsedServerVariable,
   ParsedTag,
   ExternalDocs,
-} from './parser/types.js'
+} from 'dynamic-openapi-tools/parser'

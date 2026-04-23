@@ -7,7 +7,7 @@ import {
   pluralize,
   singularize,
 } from '../src/generator/intent.js'
-import type { ParsedOperation, ParsedSpec } from '../src/parser/types.js'
+import type { ParsedOperation, ParsedSpec } from 'dynamic-openapi-tools/parser'
 
 function op(
   operationId: string,
