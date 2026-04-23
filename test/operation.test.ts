@@ -41,7 +41,6 @@ describe('renderOperation', () => {
     )
     expect(rendered).toContain('_deprecated_')
     expect(rendered).toContain('Long explanation')
-    expect(rendered).toContain('Tags: `pets`')
   })
 
   it('renders parameters, request body, responses, security, and example', () => {
@@ -87,13 +86,26 @@ describe('renderOperation', () => {
       headingLevel: 4,
     })
     expect(rendered).toContain('#### `doThing`')
-    expect(rendered).toContain('##### Parameters')
-    expect(rendered).toContain('##### Request body')
-    expect(rendered).toContain('##### Responses')
-    expect(rendered).toContain('##### Security')
-    expect(rendered).toContain('##### Example')
+    expect(rendered).toContain('**Parameters**')
+    expect(rendered).toContain('**Request body**')
+    expect(rendered).toContain('**Response**')
+    expect(rendered).toContain('**Example**')
+    expect(rendered).toContain('Auth: `bearer`')
     expect(rendered).toContain('```bash')
-    expect(rendered).toContain("`bearer`")
+  })
+
+  it('uses a Responses table only when multiple status codes exist', () => {
+    const rendered = renderOperation(
+      baseOp({
+        responses: {
+          '200': { description: 'ok', mediaType: 'application/json', schema: { type: 'object' }, content: {} },
+          '404': { description: 'not found', mediaType: 'application/json', schema: { type: 'object' }, content: {} },
+        },
+      }),
+      { baseUrl: '', securitySchemes: {}, includeExamples: false, headingLevel: 3 }
+    )
+    expect(rendered).toContain('**Responses**')
+    expect(rendered).toContain('| Status | Description | Media type | Type |')
   })
 
   it('renders externalDocs link when available', () => {

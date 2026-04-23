@@ -13,30 +13,26 @@ export interface OperationRenderOptions {
 
 export function renderOperation(op: ParsedOperation, opts: OperationRenderOptions): string {
   const h = '#'.repeat(opts.headingLevel)
-  const sub = '#'.repeat(opts.headingLevel + 1)
   const lines: string[] = []
 
   lines.push(`${h} \`${op.operationId}\``)
   lines.push('')
-  lines.push(`**\`${op.method} ${op.path}\`**${op.deprecated ? ' — _deprecated_' : ''}`)
+
+  const deprecated = op.deprecated ? ' — _deprecated_' : ''
+  const summary = firstLine(op.summary ?? op.description)
+  const header = summary
+    ? `**\`${op.method} ${op.path}\`** — ${summary}${deprecated}`
+    : `**\`${op.method} ${op.path}\`**${deprecated}`
+  lines.push(header)
   lines.push('')
 
-  if (op.summary) {
-    lines.push(op.summary)
-    lines.push('')
-  }
-  if (op.description && op.description !== op.summary) {
-    lines.push(op.description)
-    lines.push('')
-  }
-
-  if (op.tags.length > 0) {
-    lines.push(`Tags: ${op.tags.map((t) => `\`${t}\``).join(', ')}`)
+  if (op.description && op.description !== op.summary && op.description.trim().length > summary.length) {
+    lines.push(op.description.trim())
     lines.push('')
   }
 
   if (op.parameters.length > 0) {
-    lines.push(`${sub} Parameters`)
+    lines.push('**Parameters**')
     lines.push('')
     lines.push('| Name | In | Required | Type | Description |')
     lines.push('|------|----|----------|------|-------------|')
@@ -50,55 +46,51 @@ export function renderOperation(op: ParsedOperation, opts: OperationRenderOption
   }
 
   if (op.requestBody) {
-    lines.push(`${sub} Request body`)
+    const required = op.requestBody.required ? 'required' : 'optional'
+    const mediaTypes = Object.keys(op.requestBody.content)
+    const mt = mediaTypes[0] ?? 'application/json'
+    const headerLine = op.requestBody.description
+      ? `**Request body** (${required}, \`${mt}\`) — ${firstLine(op.requestBody.description)}`
+      : `**Request body** (${required}, \`${mt}\`)`
+    lines.push(headerLine)
     lines.push('')
-    if (op.requestBody.description) {
-      lines.push(op.requestBody.description)
-      lines.push('')
-    }
-    const content = op.requestBody.content
-    const mediaTypes = Object.keys(content)
-    if (mediaTypes.length > 0) {
-      lines.push(`Required: ${op.requestBody.required ? 'yes' : 'no'}`)
-      lines.push('')
-      for (const mt of mediaTypes) {
-        lines.push(`\`${mt}\``)
-        lines.push('')
-        lines.push(renderSchemaBlock(content[mt]!.schema))
+    for (const m of mediaTypes) {
+      if (mediaTypes.length > 1) {
+        lines.push(`\`${m}\``)
         lines.push('')
       }
+      lines.push(renderSchemaBlock(op.requestBody.content[m]!.schema))
+      lines.push('')
     }
   }
 
-  if (Object.keys(op.responses).length > 0) {
-    lines.push(`${sub} Responses`)
+  const responseEntries = Object.entries(op.responses)
+  if (responseEntries.length === 1) {
+    const [code, resp] = responseEntries[0]!
+    lines.push(`**Response** — ${renderResponseInline(code, resp)}`)
+    lines.push('')
+  } else if (responseEntries.length > 1) {
+    lines.push('**Responses**')
     lines.push('')
     lines.push('| Status | Description | Media type | Type |')
     lines.push('|--------|-------------|------------|------|')
-    for (const [code, resp] of Object.entries(op.responses)) {
+    for (const [code, resp] of responseEntries) {
       lines.push(renderResponseRow(code, resp))
     }
     lines.push('')
   }
 
-  if (op.security.length > 0) {
-    lines.push(`${sub} Security`)
-    lines.push('')
-    const parts = op.security
-      .map((req) => Object.keys(req).map((s) => `\`${s}\``).join(' + '))
-      .filter((s) => s.length > 0)
-    if (parts.length > 0) {
-      lines.push(parts.join(' _OR_ '))
-      lines.push('')
-    }
-  }
-
+  const securityLine = formatSecurity(op.security)
   if (opts.includeExamples) {
-    lines.push(`${sub} Example`)
+    const suffix = securityLine ? ` — Auth: ${securityLine}` : ''
+    lines.push(`**Example**${suffix}`)
     lines.push('')
     lines.push('```bash')
     lines.push(buildCurlExample(op, { baseUrl: opts.baseUrl, securitySchemes: opts.securitySchemes }))
     lines.push('```')
+    lines.push('')
+  } else if (securityLine) {
+    lines.push(`_Auth: ${securityLine}_`)
     lines.push('')
   }
 
@@ -109,6 +101,21 @@ export function renderOperation(op: ParsedOperation, opts: OperationRenderOption
   }
 
   return lines.join('\n')
+}
+
+function formatSecurity(security: ParsedOperation['security']): string {
+  const parts = security
+    .map((req) => Object.keys(req).map((s) => `\`${s}\``).join(' + '))
+    .filter((s) => s.length > 0)
+  return parts.join(' _OR_ ')
+}
+
+function renderResponseInline(code: string, resp: ParsedResponse): string {
+  const description = firstLine(resp.description)
+  const mediaType = resp.mediaType
+  const type = resp.schema ? describeSchema(resp.schema) : ''
+  const typePart = mediaType && type ? ` (\`${mediaType}\` — ${type})` : mediaType ? ` (\`${mediaType}\`)` : ''
+  return description ? `\`${code}\` ${description}${typePart}` : `\`${code}\`${typePart}`
 }
 
 function renderResponseRow(code: string, resp: ParsedResponse): string {
