@@ -1,0 +1,250 @@
+---
+name: petstore
+description: A sample API that uses a petstore as an example. Use when the user wants to interact with Petstore.
+---
+
+# Petstore
+
+A sample API that uses a petstore as an example
+
+## When to use
+
+Load this skill when the user needs to call **Petstore** (v1.0.0).
+Each operation below maps to a single HTTP request — build the URL from the base URL plus the operation path, substituting path parameters, then send the request with the HTTP client of your choice (`curl`, `fetch`, `httpx`, etc).
+
+## Base URL
+
+| URL | Description |
+|-----|-------------|
+| `https://petstore.example.com/v1` | Production |
+| `https://sandbox.petstore.example.com/v1` | Sandbox |
+| `https://{environment}.petstore.example.com/{version}` | Custom environment |
+
+Default: `https://petstore.example.com/v1`
+
+## Authentication
+
+### `bearerAuth`
+
+- Type: HTTP bearer
+- Send: `Authorization: Bearer <token>`
+
+### `apiKeyAuth`
+
+- Type: API key
+- Location: header
+- Name: `X-API-Key`
+
+Ask the user for credentials if they are not already available in the environment.
+
+## Tags
+
+- **pets** — Everything about your Pets
+- **store** — Access to Petstore orders
+
+## Operations
+
+### Pets
+
+#### `listPets`
+
+**`GET /pets`**
+
+List all pets
+
+Tags: `pets`
+
+##### Parameters
+
+| Name | In | Required | Type | Description |
+|------|----|----------|------|-------------|
+| `limit` | query | no | integer(int32) | How many items to return |
+| `status` | query | no | enum("available" \| "pending" \| "sold") | Filter by status |
+| `offset` | query | no | integer | Pagination offset |
+
+##### Responses
+
+| Status | Description | Media type | Type |
+|--------|-------------|------------|------|
+| `200` | A list of pets | `application/json` | array<object> |
+
+##### Security
+
+`bearerAuth`
+
+##### Example
+
+```bash
+curl -X GET 'https://petstore.example.com/v1/pets' \
+  -H 'Authorization: Bearer $TOKEN'
+```
+
+#### `createPet`
+
+**`POST /pets`**
+
+Create a pet
+
+Tags: `pets`
+
+##### Request body
+
+Required: yes
+
+`application/json`
+
+```yaml
+type: object
+required: [name]
+properties:
+  name:
+    type: string
+    minLength: 1
+    maxLength: 100
+  tag:
+    type: string
+```
+
+##### Responses
+
+| Status | Description | Media type | Type |
+|--------|-------------|------------|------|
+| `201` | The created pet | `application/json` | object |
+
+##### Security
+
+`bearerAuth`
+
+##### Example
+
+```bash
+curl -X POST 'https://petstore.example.com/v1/pets' \
+  -H 'Authorization: Bearer $TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "name": "Buddy",
+  "tag": "dog"
+}'
+```
+
+#### `getPetById`
+
+**`GET /pets/{petId}`**
+
+Get a pet by ID
+
+Tags: `pets`
+
+##### Parameters
+
+| Name | In | Required | Type | Description |
+|------|----|----------|------|-------------|
+| `petId` | path | yes | integer(int64) | The id of the pet to retrieve |
+
+##### Responses
+
+| Status | Description | Media type | Type |
+|--------|-------------|------------|------|
+| `200` | A pet | `application/json` | object |
+| `404` | Pet not found | `application/json` | object |
+
+##### Security
+
+`bearerAuth`
+
+##### Example
+
+```bash
+curl -X GET 'https://petstore.example.com/v1/pets/0' \
+  -H 'Authorization: Bearer $TOKEN'
+```
+
+See also: [Detailed get pet docs](https://docs.petstore.example.com/pets/get)
+
+#### `deletePet`
+
+**`DELETE /pets/{petId}`** — _deprecated_
+
+Delete a pet
+
+Tags: `pets`
+
+##### Parameters
+
+| Name | In | Required | Type | Description |
+|------|----|----------|------|-------------|
+| `petId` | path | yes | integer(int64) |  |
+
+##### Responses
+
+| Status | Description | Media type | Type |
+|--------|-------------|------------|------|
+| `204` | Pet deleted | `` |  |
+
+##### Security
+
+`bearerAuth`
+
+##### Example
+
+```bash
+curl -X DELETE 'https://petstore.example.com/v1/pets/0' \
+  -H 'Authorization: Bearer $TOKEN'
+```
+
+#### `uploadPetImage`
+
+**`PUT /pets/{petId}/image`**
+
+Upload a pet image
+
+Tags: `pets`
+
+##### Parameters
+
+| Name | In | Required | Type | Description |
+|------|----|----------|------|-------------|
+| `petId` | path | yes | integer(int64) |  |
+
+##### Request body
+
+Required: yes
+
+`application/octet-stream`
+
+```yaml
+type: string
+format: binary
+```
+
+##### Responses
+
+| Status | Description | Media type | Type |
+|--------|-------------|------------|------|
+| `200` | Image uploaded | `` |  |
+
+##### Security
+
+`bearerAuth`
+
+##### Example
+
+```bash
+curl -X PUT 'https://petstore.example.com/v1/pets/0/image' \
+  -H 'Authorization: Bearer $TOKEN' \
+  -H 'Content-Type: application/octet-stream' \
+  --data-binary @./payload
+```
+
+## References
+
+- [Full Petstore documentation](https://docs.petstore.example.com)
+
+## Spec metadata
+
+<!-- dynamic-openapi-skill: do not edit by hand — regenerate from the spec -->
+
+- API version: `1.0.0`
+- Source: `/home/ff/work/FF/dynamic-openapi-skill/test/fixtures/petstore.yaml`
+- Spec MD5: `402cfcce6024227c862296f0937d00f2`
+- Generated by `dynamic-openapi-skill@0.1.0`
