@@ -31,26 +31,30 @@ Default: `https://petstore.example.com/v1`
 - Location: header
 - Name: `X-API-Key`
 
-Ask the user for credentials if they are not already available in the environment.
-
-## Tags
-
-- **pets** — Everything about your Pets
-- **store** — Access to Petstore orders
+Ask the user for credentials if none are available in the environment.
 
 ## Operations
 
-### Pets
+> Call via `Bash` + `curl`. Each op below ships a runnable template — replace placeholders and run.
+> Use `WebFetch` only for the URL under [References](#references).
+
+### Pets (5)
+
+| Verb | Operation | Method + path | Body |
+|------|-----------|---------------|------|
+| list | `listPets` | `GET /pets` | — |
+| get | `getPetById` | `GET /pets/{petId}` | — |
+| create | `createPet` | `POST /pets` | yes |
+| upload | `uploadPetImage` | `PUT /pets/{petId}/image` | yes |
+| delete | `deletePet` | `DELETE /pets/{petId}` | — |
+
+Flow: `createPet` → `listPets` → `deletePet`
 
 #### `listPets`
 
-**`GET /pets`**
+**`GET /pets`** — List all pets
 
-List all pets
-
-Tags: `pets`
-
-##### Parameters
+**Parameters**
 
 | Name | In | Required | Type | Description |
 |------|----|----------|------|-------------|
@@ -58,17 +62,9 @@ Tags: `pets`
 | `status` | query | no | enum("available" \| "pending" \| "sold") | Filter by status |
 | `offset` | query | no | integer | Pagination offset |
 
-##### Responses
+**Response** — `200` A list of pets (`application/json` — array<object>)
 
-| Status | Description | Media type | Type |
-|--------|-------------|------------|------|
-| `200` | A list of pets | `application/json` | array<object> |
-
-##### Security
-
-`bearerAuth`
-
-##### Example
+**Example** — Auth: `bearerAuth`
 
 ```bash
 curl -X GET 'https://petstore.example.com/v1/pets' \
@@ -77,17 +73,9 @@ curl -X GET 'https://petstore.example.com/v1/pets' \
 
 #### `createPet`
 
-**`POST /pets`**
+**`POST /pets`** — Create a pet
 
-Create a pet
-
-Tags: `pets`
-
-##### Request body
-
-Required: yes
-
-`application/json`
+**Request body** (required, `application/json`)
 
 ```yaml
 type: object
@@ -101,17 +89,9 @@ properties:
     type: string
 ```
 
-##### Responses
+**Response** — `201` The created pet (`application/json` — object)
 
-| Status | Description | Media type | Type |
-|--------|-------------|------------|------|
-| `201` | The created pet | `application/json` | object |
-
-##### Security
-
-`bearerAuth`
-
-##### Example
+**Example** — Auth: `bearerAuth`
 
 ```bash
 curl -X POST 'https://petstore.example.com/v1/pets' \
@@ -125,30 +105,22 @@ curl -X POST 'https://petstore.example.com/v1/pets' \
 
 #### `getPetById`
 
-**`GET /pets/{petId}`**
+**`GET /pets/{petId}`** — Get a pet by ID
 
-Get a pet by ID
-
-Tags: `pets`
-
-##### Parameters
+**Parameters**
 
 | Name | In | Required | Type | Description |
 |------|----|----------|------|-------------|
 | `petId` | path | yes | integer(int64) | The id of the pet to retrieve |
 
-##### Responses
+**Responses**
 
 | Status | Description | Media type | Type |
 |--------|-------------|------------|------|
 | `200` | A pet | `application/json` | object |
 | `404` | Pet not found | `application/json` | object |
 
-##### Security
-
-`bearerAuth`
-
-##### Example
+**Example** — Auth: `bearerAuth`
 
 ```bash
 curl -X GET 'https://petstore.example.com/v1/pets/0' \
@@ -159,29 +131,17 @@ See also: [Detailed get pet docs](https://docs.petstore.example.com/pets/get)
 
 #### `deletePet`
 
-**`DELETE /pets/{petId}`** — _deprecated_
+**`DELETE /pets/{petId}`** — Delete a pet — _deprecated_
 
-Delete a pet
-
-Tags: `pets`
-
-##### Parameters
+**Parameters**
 
 | Name | In | Required | Type | Description |
 |------|----|----------|------|-------------|
 | `petId` | path | yes | integer(int64) |  |
 
-##### Responses
+**Response** — `204` Pet deleted
 
-| Status | Description | Media type | Type |
-|--------|-------------|------------|------|
-| `204` | Pet deleted | `` |  |
-
-##### Security
-
-`bearerAuth`
-
-##### Example
+**Example** — Auth: `bearerAuth`
 
 ```bash
 curl -X DELETE 'https://petstore.example.com/v1/pets/0' \
@@ -190,40 +150,24 @@ curl -X DELETE 'https://petstore.example.com/v1/pets/0' \
 
 #### `uploadPetImage`
 
-**`PUT /pets/{petId}/image`**
+**`PUT /pets/{petId}/image`** — Upload a pet image
 
-Upload a pet image
-
-Tags: `pets`
-
-##### Parameters
+**Parameters**
 
 | Name | In | Required | Type | Description |
 |------|----|----------|------|-------------|
 | `petId` | path | yes | integer(int64) |  |
 
-##### Request body
-
-Required: yes
-
-`application/octet-stream`
+**Request body** (required, `application/octet-stream`)
 
 ```yaml
 type: string
 format: binary
 ```
 
-##### Responses
+**Response** — `200` Image uploaded
 
-| Status | Description | Media type | Type |
-|--------|-------------|------------|------|
-| `200` | Image uploaded | `` |  |
-
-##### Security
-
-`bearerAuth`
-
-##### Example
+**Example** — Auth: `bearerAuth`
 
 ```bash
 curl -X PUT 'https://petstore.example.com/v1/pets/0/image' \
@@ -243,4 +187,4 @@ curl -X PUT 'https://petstore.example.com/v1/pets/0/image' \
 - API version: `1.0.0`
 - Source: `test/fixtures/petstore.yaml`
 - Spec MD5: `402cfcce6024227c862296f0937d00f2`
-- Generated by `dynamic-openapi-skill@0.1.1`
+- Generated by `dynamic-openapi-skill@0.1.2`
