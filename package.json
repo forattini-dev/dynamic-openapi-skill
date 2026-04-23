@@ -1,6 +1,6 @@
 {
   "name": "dynamic-openapi-skill",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Transform any OpenAPI v3 spec into a Claude Code skill",
   "type": "module",
   "main": "./dist/index.js",
