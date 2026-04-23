@@ -48,7 +48,7 @@ export async function generateSkill(options: GenerateSkillOptions): Promise<Gene
     for (const [tag, ops] of grouped) {
       files.push({
         path: `references/${slugify(tag)}.md`,
-        content: renderReferenceFile(tag, ops, {
+        content: renderReferenceFile(tag, ops, intent, {
           baseUrl,
           securitySchemes: spec.securitySchemes,
           includeExamples,
@@ -124,7 +124,7 @@ function renderSkillMd(ctx: RenderSkillContext): string {
     lines.push('')
     lines.push(`Default: \`${ctx.baseUrl}\``)
   } else {
-    lines.push('_No servers declared in the spec. Ask the user for the base URL before making requests._')
+    lines.push('_No servers declared. Ask the user for the base URL before making requests._')
   }
   lines.push('')
 
@@ -133,35 +133,22 @@ function renderSkillMd(ctx: RenderSkillContext): string {
   lines.push(renderAuthSection(ctx.spec.securitySchemes))
   lines.push('')
 
-  if (ctx.spec.tags.length > 0) {
-    lines.push('## Tags')
-    lines.push('')
-    for (const t of ctx.spec.tags) {
-      const desc = t.description ? ` — ${firstLine(t.description)}` : ''
-      lines.push(`- **${t.name}**${desc}`)
-    }
-    lines.push('')
-  }
+  lines.push('## Operations')
+  lines.push('')
+  lines.push(renderOperationsLead(ctx.spec, ctx.split))
+  lines.push('')
 
-  if (ctx.split) {
-    lines.push('## Operations')
+  for (const [tag, ops] of ctx.grouped) {
+    lines.push(renderTagHeader(tag, ops, ctx.split))
     lines.push('')
-    lines.push('Operations are grouped by tag. Load the matching reference file when the user asks about a specific area:')
-    lines.push('')
-    for (const [tag, ops] of ctx.grouped) {
-      const file = `references/${slugify(tag)}.md`
-      lines.push(`- [${toTitleCase(tag)}](${file}) — ${ops.length} operation${ops.length === 1 ? '' : 's'}`)
+    lines.push(renderTagSummary(ops, ctx.intent))
+    const flow = suggestFlow(ops, ctx.intent)
+    if (flow) {
+      lines.push('')
+      lines.push(`Flow: ${flow}`)
     }
     lines.push('')
-    lines.push('Full operation list:')
-    lines.push('')
-    lines.push(renderOperationIndex(ctx.grouped))
-  } else {
-    lines.push('## Operations')
-    lines.push('')
-    for (const [tag, ops] of ctx.grouped) {
-      lines.push(`### ${toTitleCase(tag)}`)
-      lines.push('')
+    if (!ctx.split) {
       for (const op of ops) {
         lines.push(
           renderOperation(op, {
@@ -177,7 +164,7 @@ function renderSkillMd(ctx: RenderSkillContext): string {
 
   if (ctx.spec.externalDocs) {
     const label = ctx.spec.externalDocs.description ?? 'External documentation'
-    lines.push(`## References`)
+    lines.push('## References')
     lines.push('')
     lines.push(`- [${label}](${ctx.spec.externalDocs.url})`)
     lines.push('')
@@ -186,6 +173,99 @@ function renderSkillMd(ctx: RenderSkillContext): string {
   lines.push(renderMetadataSection(ctx.metadata))
 
   return lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n'
+}
+
+function renderOperationsLead(spec: ParsedSpec, split: boolean): string {
+  const parts: string[] = []
+  parts.push('Call via `Bash` + `curl`. Each op below ships a runnable template — replace placeholders and run.')
+  if (spec.operations.some(hasBinaryResponse)) {
+    parts.push('Binary responses: pass `-o <file>` to `curl` so bytes stream to disk, not context.')
+  }
+  if (spec.externalDocs) {
+    parts.push('Use `WebFetch` only for the URL under [References](#references).')
+  }
+  if (split) {
+    parts.push('Detailed ops are in `references/<tag>.md` — open only the file matching the user\'s tag.')
+  }
+  return parts.map((p) => `> ${p}`).join('\n')
+}
+
+function renderTagHeader(tag: string, ops: ParsedOperation[], split: boolean): string {
+  const title = `### ${toTitleCase(tag)} (${ops.length})`
+  if (!split) return title
+  const ref = `references/${slugify(tag)}.md`
+  return `${title} — [\`${ref}\`](${ref})`
+}
+
+function renderTagSummary(ops: ParsedOperation[], intent: Intent): string {
+  const lines: string[] = []
+  lines.push('| Verb | Operation | Method + path | Body |')
+  lines.push('|------|-----------|---------------|------|')
+  const sorted = [...ops].sort(
+    (a, b) => workflowOrder(intent.verbsByOperation.get(a.operationId)) - workflowOrder(intent.verbsByOperation.get(b.operationId))
+  )
+  for (const op of sorted) {
+    const verb = intent.verbsByOperation.get(op.operationId) ?? op.method.toLowerCase()
+    const body = op.requestBody ? 'yes' : '—'
+    lines.push(`| ${verb} | \`${op.operationId}\` | \`${op.method} ${op.path}\` | ${body} |`)
+  }
+  return lines.join('\n')
+}
+
+const WORKFLOW_VERB_ORDER = [
+  'list', 'search', 'find', 'query',
+  'get', 'fetch', 'retrieve', 'read',
+  'create', 'add', 'register', 'upload',
+  'update', 'patch', 'edit', 'modify', 'replace', 'set',
+  'approve', 'reject', 'enable', 'disable', 'reset',
+  'capture', 'refund', 'void', 'transfer', 'pay', 'charge',
+  'send', 'notify', 'trigger', 'run', 'execute', 'start', 'stop', 'pause', 'resume',
+  'download', 'export', 'import',
+  'delete', 'remove', 'destroy', 'cancel',
+]
+
+function workflowOrder(verb: string | undefined): number {
+  if (!verb) return WORKFLOW_VERB_ORDER.length
+  const idx = WORKFLOW_VERB_ORDER.indexOf(verb)
+  return idx === -1 ? WORKFLOW_VERB_ORDER.length : idx
+}
+
+function suggestFlow(ops: ParsedOperation[], intent: Intent): string {
+  const byVerb = new Map<string, ParsedOperation>()
+  for (const op of ops) {
+    const verb = intent.verbsByOperation.get(op.operationId)
+    if (verb && !byVerb.has(verb)) byVerb.set(verb, op)
+  }
+  const pick = (...keys: string[]) => {
+    for (const k of keys) {
+      const op = byVerb.get(k)
+      if (op) return op
+    }
+    return undefined
+  }
+  const create = pick('create', 'add', 'register')
+  const read = pick('list', 'search', 'find', 'get', 'fetch')
+  const update = pick('update', 'patch', 'edit', 'replace')
+  const del = pick('delete', 'remove', 'cancel')
+
+  const steps: string[] = []
+  if (create) steps.push(`\`${create.operationId}\``)
+  if (read) steps.push(`\`${read.operationId}\``)
+  if (update) steps.push(`\`${update.operationId}\``)
+  if (del) steps.push(`\`${del.operationId}\``)
+  return steps.length >= 2 ? steps.join(' → ') : ''
+}
+
+function hasBinaryResponse(op: ParsedOperation): boolean {
+  for (const resp of Object.values(op.responses)) {
+    for (const mt of Object.keys(resp.content ?? {})) {
+      if (mt.startsWith('image/')) return true
+      if (mt === 'application/octet-stream') return true
+      if (mt.startsWith('application/pdf')) return true
+      if (mt === 'application/zip' || mt === 'application/x-gzip') return true
+    }
+  }
+  return false
 }
 
 function renderMetadataSection(metadata: SpecMetadata): string {
@@ -202,28 +282,21 @@ function renderMetadataSection(metadata: SpecMetadata): string {
   return lines.join('\n')
 }
 
-function renderOperationIndex(grouped: Map<string, ParsedOperation[]>): string {
-  const lines: string[] = []
-  lines.push('| Operation | Method | Path | Summary |')
-  lines.push('|-----------|--------|------|---------|')
-  for (const ops of grouped.values()) {
-    for (const op of ops) {
-      const summary = firstLine(op.summary ?? op.description).replace(/\|/g, '\\|')
-      lines.push(`| \`${op.operationId}\` | ${op.method} | \`${op.path}\` | ${summary} |`)
-    }
-  }
-  return lines.join('\n')
-}
-
 function renderReferenceFile(
   tag: string,
   operations: ParsedOperation[],
+  intent: Intent,
   opts: { baseUrl: string; securitySchemes: Record<string, OpenAPIV3.SecuritySchemeObject>; includeExamples: boolean; headingLevel: number }
 ): string {
   const lines: string[] = []
   lines.push(`# ${toTitleCase(tag)}`)
   lines.push('')
-  lines.push(`${operations.length} operation${operations.length === 1 ? '' : 's'} in this group.`)
+  lines.push(renderTagSummary(operations, intent))
+  const flow = suggestFlow(operations, intent)
+  if (flow) {
+    lines.push('')
+    lines.push(`Flow: ${flow}`)
+  }
   lines.push('')
   for (const op of operations) {
     lines.push(renderOperation(op, opts))
@@ -233,7 +306,7 @@ function renderReferenceFile(
 
 function renderAuthSection(schemes: Record<string, OpenAPIV3.SecuritySchemeObject>): string {
   const entries = Object.entries(schemes)
-  if (entries.length === 0) return '_No authentication schemes declared. Operations are either public or require out-of-band credentials._'
+  if (entries.length === 0) return '_No auth schemes declared. Operations are public or need out-of-band credentials._'
 
   const lines: string[] = []
   for (const [name, scheme] of entries) {
@@ -284,7 +357,7 @@ function renderAuthSection(schemes: Record<string, OpenAPIV3.SecuritySchemeObjec
     lines.push('')
   }
 
-  lines.push('Ask the user for credentials if they are not already available in the environment.')
+  lines.push('Ask the user for credentials if none are available in the environment.')
   return lines.join('\n')
 }
 
